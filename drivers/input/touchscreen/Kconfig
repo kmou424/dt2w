@@ -3,8 +3,8 @@
 #
 #Its extension of Ur Kconfig -Add at last of Kconfig File
 
-config TOUCHSCREEN_DOUBLETAP2WAKE
-	tristate "DoubleTap2Wake for touchscreens"
+config TOUCHSCREEN_ONETAP2WAKE
+	tristate "OneTap2Wake for touchscreens"
 	select TOUCHSCREEN_PREVENT_SLEEP
 	default n
 config TOUCHSCREEN_PREVENT_SLEEP

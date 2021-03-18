@@ -75,7 +75,6 @@ MODULE_LICENSE("GPLv3");
 
 #define DT2W_PWRKEY_DUR   20
 #define DT2W_RADIUS       80
-#define VIB_STRENGTH      70
 #define DT2W_TIME         750
 #define DT2W_OFF 		  0
 #define DT2W_ON 		  1
@@ -86,8 +85,6 @@ MODULE_LICENSE("GPLv3");
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // My code :
-
-unsigned int vib_strength = VIB_STRENGTH;
 bool revert_area=0;
 unsigned int dt2w_distance_x=DT2W_DISTANCE_X;
 unsigned int dt2w_distance_y=DT2W_DISTANCE_Y;
@@ -97,19 +94,15 @@ unsigned int right=720;
 unsigned int co_up=0;
 unsigned int co_down=1280;
 unsigned int Dt2w_regions=0;
-//bool dt2w_override_vibration_to_null=true;
-unsigned int dt2w_override_taps=3; //******************************************
-unsigned int pocket_override_timeout = 800; //
+unsigned int dt2w_override_taps=3;
+unsigned int pocket_override_timeout = 800;
 static cputime64_t initial_override_press=0; 
-unsigned int vibration_strength_on_pocket_override = 150;	//
 static unsigned int current_tap=0;
 static int exec_count = true;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-extern struct vib_trigger *vib_trigger;
 static struct input_dev *gesture_dev;
 //extern int gestures_switch;
-extern void set_vibrate(int value);
 
 /* Resources */
 int dt2w_switch = DT2W_DEFAULT;
@@ -226,9 +219,8 @@ static void detect_doubletap2wake(int x, int y)
 //				touch_nr++;     Here we know that the touch number is going to be 2 and hence >1 so the if statement down below will turn true.
 //                              so it is better that we don't wait for the control to go there, and we pwr_on it from here directly
 				exec_count = false;
-                doubletap2wake_pwrtrigger();  // We queue the screen on first, as it takes more time to do than vibration.
-			    set_vibrate(vib_strength);    // While the screen is queued, and is waking, we hammer the vibrator. Minor UX tweak.
-			    doubletap2wake_reset();     // Here the touch number is also reset to 0, but the program executes as needed. See yourself.
+                doubletap2wake_pwrtrigger();  // Queue the screen wake
+                doubletap2wake_reset();     // Here the touch number is also reset to 0, but the program executes as needed. See yourself.
             }
 			else {          //If the second tap isn't close or fast enough, reset previous coords, treat second tap as a separate first tap
 				doubletap2wake_reset();
@@ -248,7 +240,6 @@ static void detect_pocket_override_dt2w(void)
 	else if ((current_tap == (dt2w_override_taps))&&(((ktime_to_ms(ktime_get()))-initial_override_press)<pocket_override_timeout))
 	{
 		doubletap2wake_pwrtrigger();
-		set_vibrate(vibration_strength_on_pocket_override);
 		current_tap = 0;
 		initial_override_press = 0;
 	}
@@ -261,14 +252,7 @@ static void detect_pocket_override_dt2w(void)
 }
 
 static void dt2w_input_callback(struct work_struct *unused) {
-	
-/*	if (touch_y>1280)
-	{
-		dt2w_override_vibration_to_null=true;
-	}
-	else
-		dt2w_override_vibration_to_null=false;
-*/		
+
 #ifdef CONFIG_POCKETMOD
   	if (device_is_pocketed()){
        if(touch_cnt)
@@ -335,12 +319,10 @@ static void dt2w_input_event(struct input_handle *handle, unsigned int type,
 #endif
 
 	if (in_phone_call){
-//        dt2w_override_vibration_to_null=false;
 		return;
     }
 
 	if (!(dt2w_scr_suspended)){
-//        dt2w_override_vibration_to_null=false;	
     	return;
     }
 	if (code == ABS_MT_SLOT) {
@@ -569,33 +551,6 @@ static ssize_t dt2w_version_dump(struct device *dev,
 static DEVICE_ATTR(doubletap2wake_version, (S_IWUSR|S_IRUGO),
 	dt2w_version_show, dt2w_version_dump);
 
-static ssize_t vib_strength_show(struct device *dev,
-		 struct device_attribute *attr, char *buf)
-{
-	return snprintf(buf, PAGE_SIZE, "%d\n", vib_strength);
-}
-
-static ssize_t vib_strength_dump(struct device *dev,
-		 struct device_attribute *attr, const char *buf, size_t count)
-{
-	int ret;
-	unsigned long input;
-
-	ret = kstrtoul(buf, 0, &input);
-	if (ret < 0)
-		return ret;
-
-	if (input < 0 || input > 90)
-		input = 20;
-
-	vib_strength = input;
-
-	return count;
-}
-
-static DEVICE_ATTR(vib_strength, 0666,
-	vib_strength_show, vib_strength_dump);
-
 /*
  * INIT / EXIT stuff below here
  */
@@ -605,22 +560,6 @@ extern struct kobject *android_touch_kobj;
 struct kobject *android_touch_kobj;
 EXPORT_SYMBOL_GPL(android_touch_kobj);
 #endif
-
-// Some of my code for vibration tunable (starts here) :
-/*
-static struct kobject *vib_strength_kobj;'
-
-static ssize_t vib_strength_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
-{
-	size_t count = 0;
-	count += sprintf(buf, "%d\n", vib_strength);
-	return count;
-}*/
-
-
-
-
-
 
 static int __init doubletap2wake_init(void)
 {
@@ -676,9 +615,6 @@ static int __init doubletap2wake_init(void)
 	if (rc) {
 		pr_warn("%s: sysfs_create_file failed for doubletap2wake_version\n", __func__);
 	}
-	rc = sysfs_create_file(android_touch_kobj, &dev_attr_vib_strength.attr);
-	if (rc)
-		pr_warn("%s: sysfs_create_file failed for vib_strength\n", __func__);
 
 err_input_dev:
 	input_free_device(doubletap2wake_pwrdev);

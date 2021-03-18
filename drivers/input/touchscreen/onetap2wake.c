@@ -70,7 +70,7 @@ MODULE_VERSION(DRIVER_VERSION);
 MODULE_LICENSE("GPLv3");
 
 /* Tuneables */
-#define OT2W_DEBUG         0
+#define OT2W_DEBUG         1
 #define OT2W_DEFAULT       1
 
 #define OT2W_PWRKEY_DUR   20
